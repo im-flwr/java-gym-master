@@ -1,9 +1,8 @@
 package ru.yandex.practicum.gym;
 
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-
-import java.util.*;
+import java.util.List;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class TimetableTest {
 
@@ -18,8 +17,12 @@ public class TimetableTest {
 
         timetable.addNewTrainingSession(singleTrainingSession);
 
-        //Проверить, что за понедельник вернулось одно занятие
-        //Проверить, что за вторник не вернулось занятий
+        List<TrainingSession> mondaySessions = timetable.getTrainingSessionsForDay(DayOfWeek.MONDAY);
+        assertEquals(1, mondaySessions.size());
+        assertTrue(mondaySessions.contains(singleTrainingSession));
+
+        List<TrainingSession> tuesdaySessions = timetable.getTrainingSessionsForDay(DayOfWeek.TUESDAY);
+        assertTrue(tuesdaySessions.isEmpty());
     }
 
     @Test
@@ -46,9 +49,17 @@ public class TimetableTest {
         timetable.addNewTrainingSession(thursdayChildTrainingSession);
         timetable.addNewTrainingSession(saturdayChildTrainingSession);
 
-        // Проверить, что за понедельник вернулось одно занятие
-        // Проверить, что за четверг вернулось два занятия в правильном порядке: сначала в 13:00, потом в 20:00
-        // Проверить, что за вторник не вернулось занятий
+        List<TrainingSession> mondaySessions = timetable.getTrainingSessionsForDay(DayOfWeek.MONDAY);
+        assertEquals(1, mondaySessions.size());
+        assertTrue(mondaySessions.contains(mondayChildTrainingSession));
+
+        List<TrainingSession> thursdaySessions = timetable.getTrainingSessionsForDay(DayOfWeek.THURSDAY);
+        assertEquals(2, thursdaySessions.size());
+        assertEquals(13, thursdaySessions.get(0).getTimeOfDay().getHours());
+        assertEquals(20, thursdaySessions.get(1).getTimeOfDay().getHours());
+
+        List<TrainingSession> tuesdaySessions = timetable.getTrainingSessionsForDay(DayOfWeek.TUESDAY);
+        assertTrue(tuesdaySessions.isEmpty());
     }
 
     @Test
@@ -62,8 +73,67 @@ public class TimetableTest {
 
         timetable.addNewTrainingSession(singleTrainingSession);
 
-        //Проверить, что за понедельник в 13:00 вернулось одно занятие
-        //Проверить, что за понедельник в 14:00 не вернулось занятий
+        List<TrainingSession> sessionsAt13 = timetable.getTrainingSessionsForDayAndTime(DayOfWeek.MONDAY, new TimeOfDay(13, 0));
+        assertEquals(1, sessionsAt13.size());
+        assertTrue(sessionsAt13.contains(singleTrainingSession));
+
+        List<TrainingSession> sessionsAt14 = timetable.getTrainingSessionsForDayAndTime(DayOfWeek.MONDAY, new TimeOfDay(14, 0));
+        assertTrue(sessionsAt14.isEmpty());
     }
 
+    @Test
+    void testMultipleSessionsAtSameTime() {
+        Timetable timetable = new Timetable();
+
+        Group group1 = new Group("Йога для взрослых", Age.ADULT, 60);
+        Group group2 = new Group("Пилатес", Age.ADULT, 60);
+        Coach coach = new Coach("Иванов", "Иван", "Иванович");
+
+        TrainingSession session1 = new TrainingSession(group1, coach, DayOfWeek.MONDAY, new TimeOfDay(18, 0));
+        TrainingSession session2 = new TrainingSession(group2, coach, DayOfWeek.MONDAY, new TimeOfDay(18, 0));
+
+        timetable.addNewTrainingSession(session1);
+        timetable.addNewTrainingSession(session2);
+
+        List<TrainingSession> result = timetable.getTrainingSessionsForDayAndTime(DayOfWeek.MONDAY, new TimeOfDay(18, 0));
+
+        assertEquals(2, result.size());
+        assertTrue(result.contains(session1));
+        assertTrue(result.contains(session2));
+    }
+
+    @Test
+    void testGetCountByCoaches() {
+        Timetable timetable = new Timetable();
+
+        Coach coach1 = new Coach("Сидоров", "Петр", "Петрович");
+        Coach coach2 = new Coach("Козлов", "Алексей", "Алексеевич");
+        Group group = new Group("Кроссфит", Age.ADULT, 60);
+
+        timetable.addNewTrainingSession(new TrainingSession(group, coach1, DayOfWeek.MONDAY, new TimeOfDay(10, 0)));
+        timetable.addNewTrainingSession(new TrainingSession(group, coach1, DayOfWeek.WEDNESDAY, new TimeOfDay(10, 0)));
+
+        timetable.addNewTrainingSession(new TrainingSession(group, coach2, DayOfWeek.MONDAY, new TimeOfDay(18, 0)));
+        timetable.addNewTrainingSession(new TrainingSession(group, coach2, DayOfWeek.WEDNESDAY, new TimeOfDay(18, 0)));
+        timetable.addNewTrainingSession(new TrainingSession(group, coach2, DayOfWeek.FRIDAY, new TimeOfDay(18, 0)));
+
+        List<Timetable.CounterOfTrainings> result = timetable.getCountByCoaches();
+
+        assertEquals(2, result.size());
+
+        assertEquals(3, result.get(0).getCount());
+        assertEquals("Козлов", result.get(0).getCoach().getSurname());
+
+        assertEquals(2, result.get(1).getCount());
+        assertEquals("Сидоров", result.get(1).getCoach().getSurname());
+    }
+
+    @Test
+    void testGetCountByCoachesNoSessions() {
+        Timetable timetable = new Timetable();
+
+        List<Timetable.CounterOfTrainings> result = timetable.getCountByCoaches();
+
+        assertTrue(result.isEmpty());
+    }
 }
